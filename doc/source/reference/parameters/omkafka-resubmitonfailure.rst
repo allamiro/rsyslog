@@ -45,6 +45,25 @@ Notes
 -----
 
 - Originally documented as "binary"; uses boolean values.
+- When ``resubmitOnFailure="on"`` is active, a broker failure during
+  delivery can cause the same message to be sent more than once.
+  This happens because two independent retry paths exist: rsyslog's
+  own action queue (which retains the message when the action returns
+  suspended) and omkafka's internal failed-message queue (populated
+  by the librdkafka delivery callback). When the broker recovers,
+  both paths attempt to send the message.
+  To prevent duplicates, enable idempotent delivery on the Kafka
+  producer side via ``confParam``:
+
+  .. code-block:: rsyslog
+
+     action(type="omkafka"
+            resubmitOnFailure="on"
+            confParam=["enable.idempotence=true", "acks=all"])
+
+  With ``enable.idempotence=true``, the broker uses a producer
+  sequence number to detect and discard retried duplicates,
+  regardless of which retry path delivers the message.
 
 See also
 --------
