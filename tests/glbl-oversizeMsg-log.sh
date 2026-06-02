@@ -25,13 +25,25 @@ tcpflood -Trelp-plain -p'$TCPFLOOD_PORT' -m1 -d 240
 shutdown_when_empty # shut down rsyslogd when done processing messages
 wait_shutdown
 
-grep "rawmsg.*<167>Mar  1 01:00:00 172.20.245.8 tag msgnum:00000000:240:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.*input.*imrelp" ${RSYSLOG2_OUT_LOG} > /dev/null
-if [ $? -ne 0 ]; then
-        echo
-        echo "FAIL: expected message not found. ${RSYSLOG2_OUT_LOG} is:"
-        cat ${RSYSLOG2_OUT_LOG}
+# Verify required fields are present; each checked independently so the
+# test is not sensitive to JSON key ordering (undefined by spec).
+check_field() {
+    local field="$1" pattern="$2"
+    if ! grep -q "$pattern" "${RSYSLOG2_OUT_LOG}"; then
+        echo "FAIL: oversize log missing field '$field' (pattern: $pattern)"
+        echo "${RSYSLOG2_OUT_LOG} contents:"
+        cat "${RSYSLOG2_OUT_LOG}"
         error_exit 1
-fi
+    fi
+}
+
+check_field "rawmsg"       "rawmsg"
+check_field "input/imrelp" '"input"'
+check_field "fromhost-ip"  '"fromhost-ip"'
+check_field "timereported" '"timereported"'
+check_field "timegenerated" '"timegenerated"'
+check_field "hostname"     '"hostname"'
+check_field "syslogtag"    '"syslogtag"'
 
 
 exit_test

@@ -2245,6 +2245,44 @@ const uchar *msgGetJSONMESG(smsg_t *__restrict__ const pMsg) {
     return pRes;
 }
 
+/* Enrich an existing JSON object with per-message metadata useful for
+ * the oversize-message error log: source host, timestamps, tag, etc.
+ * Called by writeOversizeMessageLog(); placed here so the static getters
+ * (getRcvFromIP, getRcvFromPort, getTimeGenerated) stay private to msg.c.
+ */
+void msgAddOversizeMetaToJSON(smsg_t *__restrict__ const pMsg, struct json_object *json) {
+    struct json_object *jval;
+    uchar *pRes;
+    rs_size_t bufLen;
+
+    static const char *const str_fields[] = {"fromhost",  "fromhost-ip",  "fromhost-port", "hostname",
+                                             "syslogtag", "timereported", "timegenerated", NULL};
+
+    /* Populate each field; getters return "" when data is unavailable. */
+    for (int i = 0; str_fields[i] != NULL; ++i) {
+        const char *val = NULL;
+        bufLen = -1;
+        if (!strcmp(str_fields[i], "fromhost")) {
+            val = (const char *)getRcvFrom(pMsg);
+        } else if (!strcmp(str_fields[i], "fromhost-ip")) {
+            val = (const char *)getRcvFromIP(pMsg);
+        } else if (!strcmp(str_fields[i], "fromhost-port")) {
+            val = (const char *)getRcvFromPort(pMsg);
+        } else if (!strcmp(str_fields[i], "hostname")) {
+            val = getHOSTNAME(pMsg);
+        } else if (!strcmp(str_fields[i], "syslogtag")) {
+            getTAG(pMsg, &pRes, (int *)&bufLen, LOCK_MUTEX);
+            val = (const char *)pRes;
+        } else if (!strcmp(str_fields[i], "timereported")) {
+            val = getTimeReported(pMsg, tplFmtRFC3339Date);
+        } else if (!strcmp(str_fields[i], "timegenerated")) {
+            val = getTimeGenerated(pMsg, tplFmtRFC3339Date);
+        }
+        jval = json_object_new_string(val ? val : "");
+        json_object_object_add(json, str_fields[i], jval);
+    }
+}
+
 /* rgerhards 2009-06-12: set associated ruleset
  */
 void MsgSetRuleset(smsg_t *const pMsg, ruleset_t *pRuleset) {

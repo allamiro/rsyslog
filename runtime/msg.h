@@ -224,6 +224,7 @@ rsRetVal MsgDeserialize(smsg_t *pMsg, strm_t *pStrm);
 rsRetVal MsgSetPropsViaJSON(smsg_t *__restrict__ const pMsg, const uchar *__restrict__ const json);
 rsRetVal MsgSetPropsViaJSON_Object(smsg_t *__restrict__ const pMsg, struct json_object *json);
 const uchar *msgGetJSONMESG(smsg_t *__restrict__ const pMsg);
+void msgAddOversizeMetaToJSON(smsg_t *__restrict__ const pMsg, struct json_object *json);
 
 /**
  * @brief Acquire the message mutex.

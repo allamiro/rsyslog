@@ -228,6 +228,12 @@ rsRetVal ATTR_NONNULL() writeOversizeMessageLog(const smsg_t *const pMsg) {
     jval = json_object_new_string((char *)buf);
     json_object_object_add(json, "input", jval);
 
+    /* Enrich with per-message metadata (fromhost, timestamps, hostname,
+     * syslogtag, etc.) so oversize-log entries are actionable without
+     * cross-referencing other logs.  The cast is safe: msgAddOversizeMetaToJSON
+     * only reads pMsg fields via the standard getters. */
+    msgAddOversizeMetaToJSON((smsg_t *)pMsg, json);
+
     CHKmalloc(rendered = strdup((char *)fjson_object_to_json_string(json)));
 
     toWrite = strlen(rendered) + 1;
